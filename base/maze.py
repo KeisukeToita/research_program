@@ -50,8 +50,8 @@ class Maze():
         return transition_probs
     
     #遷移を行う
-    def transit(self, state, action):
-        transition_probs = self.transit_func(state, action)
+    def transit(self, transit_probs): #遷移確率をエージェントから獲得する．
+        #transition_probs = self.transit_func(state, action)
         if len(transition_probs) == 0:
             return None, None, True
 
@@ -118,7 +118,7 @@ class Maze():
             reward = 10
             done = True
         elif attribute == -1:
-            reward = -1
+            reward = -10
             done = True
 
         return reward, done
