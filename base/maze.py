@@ -5,28 +5,36 @@ import numpy as np
 
 from agent import *
 
+#environment関連のクラス
+
+#ライブラリimport
+import numpy as np
+
 class Maze():
 
     def __init__(self, grid):
 
         self.grid = grid
+        
         self.agent_state = State()
+        self.init_agent_state = State(3,0) #初期位置
 
-        self.default_reward = -0.04
+        self.default_reward = 0
         self.collision_reward = -10 #マルチエージェントの時に使用
-
+    
+    @property
     def row_length(self):
         return len(self.grid)
-
+    @property
     def column_length(self):
         return len(self.grid[0])
-
+    @property
     def actions(self):
         return [Action.UP, Action.DOWN, Action.LEFT, Action.RIGHT, Action.STAY]
 
     #環境の初期化を行う
     def reset(self):
-        self.agent_state = State(self.row_length-1, 0) #エージェントの位置を初期化 *とりまこれだけ
+        self.agent_state = self.init_agent_state #エージェントの位置を初期化 *とりまこれだけ
         return self.agent_state
         
     #遷移のための関数    return 遷移確率
@@ -50,8 +58,8 @@ class Maze():
         return transition_probs
     
     #遷移を行う
-    def transit(self, transit_probs): #遷移確率をエージェントから獲得する．
-        #transition_probs = self.transit_func(state, action)
+    def transit(self, state, action): #遷移確率をエージェントから獲得する．
+        transition_probs = self.transit_func(state, action)
         if len(transition_probs) == 0:
             return None, None, True
 
@@ -67,6 +75,16 @@ class Maze():
 
         #報酬獲得と終了判定
         reward, done = self.reward_func(next_state)
+        return next_state, reward, done
+    
+    #1 step turn
+    def step(self, action):
+        #TODO
+        next_state, reward, done = self.transit(self.agent_state, action)
+        
+        if next_state is not None:
+            self.agent_state = next_state
+            
         return next_state, reward, done
 
     #行動可能かの判定
