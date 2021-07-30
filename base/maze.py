@@ -7,19 +7,16 @@ from agent import *
 
 #environment関連のクラス
 
-#ライブラリimport
-import numpy as np
-
 class Maze():
 
-    def __init__(self, grid):
+    def __init__(self, grid, init_agent_state=None):
 
         self.grid = grid
         
         self.agent_state = State()
         self.init_agent_state = State(3,0) #初期位置
 
-        self.default_reward = 0
+        self.default_reward = -0.04
         self.collision_reward = -10 #マルチエージェントの時に使用
     
     @property
@@ -137,6 +134,9 @@ class Maze():
             done = True
         elif attribute == -1:
             reward = -10
+            done = True
+        elif attribute == 2:
+            reward = 1000
             done = True
 
         return reward, done

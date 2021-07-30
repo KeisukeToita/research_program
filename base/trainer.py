@@ -66,7 +66,7 @@ class QLearningTrainer(Trainer):
             while not done:
                 a = self.agent.act(agent_state)
                 n_state, reward, done = self.env.step(a)
-                self.agent.learn(agent_state, n_state, trans_aton(a), reward)
+                self.agent.learn(agent_state, n_state, a, reward)
                 total_reward += reward
                 agent_state = n_state
             else:
@@ -77,16 +77,16 @@ class QLearningTrainer(Trainer):
 def main():
     # 環境データ
     grid = [
-        [0, 0, 0, 1],
-        [0, 0, -1, -1],
-        [0, 9, -1, 0],
+        [9, 0, 0, 2],
+        [9, 0, 9, 9],
+        [9, 0, 1, 9],
         [0, 0, 0, 0],
     ]
 
     env = Maze(grid)
-    agent = QLearningAgent(env, epsilon=0.2)
+    agent = QLearningAgent(env, epsilon=0.3)
 
-    trainer = QLearningTrainer(agent, env, 10000, 100)
+    trainer = QLearningTrainer(agent, env, 1000000, 1000)
 
     trainer.train()
 

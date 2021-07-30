@@ -127,9 +127,10 @@ class QLearningAgent(Agent):
         self.reward_log.append(reward)
 
     def learn(self, s, n_s, action, reward):
+        a = trans_aton(action)
         gain = reward + self.gamma * max(self.Q[n_s])
-        estimated = self.Q[s][action]
-        self.Q[s][action] += self.alpha * (gain - estimated)
+        estimated = self.Q[s][a]
+        self.Q[s][a] += self.alpha * (gain - estimated)
 
             
 
