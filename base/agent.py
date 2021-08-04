@@ -2,43 +2,11 @@ import random
 from enum import Enum
 import numpy as np
 import math
+from base_utils import *
 from collections import defaultdict
 
 
-# 状態を表すクラス
-class State():
-    def __init__(self, row=-1, column=-1):
-        self.column = column
-        self.row = row
-
-    # 状態の表現
-    def repr(self):
-        return "<State:[{}, {}]>".format(self.row, self.column)
-    # クローン生成
-
-    def clone(self):
-        return State(self.row, self.column)
-    # ハッシュ型のクローン?
-
-    def __hash__(self):
-        return hash((self.row, self.column))
-
-    # 同値判定
-    def __eq__(self, other):
-        return self.row == other.row and self.column == other.column
-
-# 行動の定義
-
-
-class Action(Enum):
-    UP = 0
-    DOWN = 1
-    LEFT = 2
-    RIGHT = 3
-    STAY = 4
-
 # Agent_Base
-
 
 class Agent():
     def __init__(self, env):
@@ -134,30 +102,6 @@ class QLearningAgent(Agent):
 
             
 
-def trans_ntoa(action_n):
-    if action_n == 0:
-        return Action.UP
-    if action_n == 1:
-        return Action.DOWN
-    if action_n == 2:
-        return Action.LEFT
-    if action_n == 3:
-        return Action.RIGHT
-    if action_n == 4:
-        return Action.STAY
-
-def trans_aton(action):
-    if action == Action.UP:
-        return 0
-    if action == Action.DOWN:
-        return 1
-    if action == Action.LEFT:
-        return 2
-    if action == Action.RIGHT:
-        return 3
-    if action == Action.STAY:
-        return 4
-
 # 環境の情報取得のためのクラス
 
 
@@ -188,17 +132,3 @@ class Planner():
 
     def policy(self):  # 行動選択
         pass
-
-
-class LogShow():  # 記録用クラス
-
-    def __init__(self, env):
-        self.env = env
-        pass
-
-    def log_func(self):
-        pass
-
-    def show_q_value(self, Q):
-        nrow = self.env.row_length
-        ncol = self.env.column_length

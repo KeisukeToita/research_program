@@ -7,6 +7,38 @@ from agent import *
 
 #environment関連のクラス
 
+# 状態を表すクラス
+class State():
+    def __init__(self, row=-1, column=-1):
+        self.column = column
+        self.row = row
+
+    # 状態の表現
+    def repr(self):
+        return "<State:[{}, {}]>".format(self.row, self.column)
+    # クローン生成
+
+    def clone(self):
+        return State(self.row, self.column)
+    # ハッシュ型のクローン?
+
+    def __hash__(self):
+        return hash((self.row, self.column))
+
+    # 同値判定
+    def __eq__(self, other):
+        return self.row == other.row and self.column == other.column
+
+# 行動の定義
+
+class Action(Enum):
+    UP = 0
+    DOWN = 1
+    LEFT = 2
+    RIGHT = 3
+    STAY = 4
+
+
 class Maze():
 
     def __init__(self, grid, init_agent_state=None):
