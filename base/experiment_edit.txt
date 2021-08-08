@@ -1,5 +1,6 @@
-{"exp_title": "AgentTrain",
+{"exp_title": "MultiAgentTrain",
 "seed": 10,
 "episode": 1000,
 "repo&write_interval": 10,
-"maze_data":"maze1.txt"}
+"maze_data":"maze1.txt",
+"agent_num": 2}

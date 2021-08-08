@@ -6,14 +6,14 @@ from logger import *
 #Single agent Trainer
 class Trainer():
 
-    def __init__(self, agent, env, episode=1, report_interval=50, dirname=None):
+    def __init__(self, agents, env, episode=1, report_interval=50, dirname=None):
         self.env = env
-        self.agent = agent
+        self.agents = agents #listにした
 
         self.episode = episode
         self.report_interval = report_interval
 
-        self.logger = Logger(dirname)
+        self.logger = Logger(dirname, len(agents)) #Loggerにエージェントの数を入力
 
     def train(self):
         for i in range(self.episode):
@@ -21,21 +21,42 @@ class Trainer():
                 print("Episode {}: Agent gets {} reward.".format(i+1, self.one_episode(i+1)))
 
     def one_episode(self, episode_n):
-        agent_state = self.env.reset()
+        agents_state=[]
+        agents_done=[]
+        for i in range(len(self.agents)):
+            agents_state.append(self.env.reset())
+            agents_done.append(False)
+
         total_reward = 0
-        done = False
 
         self.logger.init_exp_log()
         step_n = 1
 
-        while not done:
-            action = self.agent.act(agent_state)
-            next_state, reward, done = self.env.step(action)
-            total_reward += reward
+        while False in agents_done:
+            actions, next_states, rewards=[],[],[]
+            
+            #行動選択
+            for i in range(len(self.agents)):
+                actions.append(self.agents[i].act(agents_state[i]))
+            
+            #各エージェントごとにステップを行い，結果を格納
+            for i in range(len(self.agents)):
+                if agents_done[i] == False:
+                    next_state, reward, done = self.env.step(i,actions[i])
+                else:
+                    actions[i]=self.env.actions[4] #STAY
+                    next_state, reward, done = agents_state[i], int(0), True
 
-            self.logger.add_experience(step_n, agent_state, action, reward, total_reward)
+                next_states.append(next_state)
+                rewards.append(reward)
+                agents_done[i]=done
+                
+            total_reward += sum(rewards)
 
-            agent_state = next_state
+            self.logger.add_experience(step_n, agents_state, actions, rewards, total_reward)
+
+            for i in range(len(self.agents)):
+                agents_state[i] = next_states[i]
             step_n += 1
 
         #csv形式で保存

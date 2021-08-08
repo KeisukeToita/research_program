@@ -13,13 +13,17 @@ def main():
 
     #環境データ
     grid = maze_open(config["maze_data"])
+    env = Maze(grid,agent_num=config["agent_num"])
 
-    env = Maze(grid)
-    agent = QLearningAgent(env, epsilon=0.3)
-    #agent = Agent(env)
+    #エージェント
+    agents=[]
+    #agent = QLearningAgent(env, epsilon=0.3)
+    for i in range(config["agent_num"]):
+        agents.append(Agent(env))
+    
 
-    trainer = QLearningTrainer(agent, env, config["episode"], config["repo&write_interval"], dirname)
-    #trainer = Trainer(agent, env, config["episode"], config["repo&write_interval"], dirname)
+    #trainer = QLearningTrainer(agent, env, config["episode"], config["repo&write_interval"], dirname)
+    trainer = Trainer(agents, env, config["episode"], config["repo&write_interval"], dirname)
 
     trainer.train()
 

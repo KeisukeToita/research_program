@@ -41,12 +41,16 @@ class Action(Enum):
 
 class Maze():
 
-    def __init__(self, grid, init_agent_state=None):
+    def __init__(self, grid, init_agent_state=None, agent_num=1):
 
         self.grid = grid
-        
-        self.agent_state = State()
+        self.agent_num = agent_num
+        self.agents_state = []
+        for i in range(agent_num):
+            self.agents_state.append(State())
+
         self.init_agent_state = State(3,0) #初期位置
+        self.now_agent=0
 
         self.default_reward = -0.04
         self.collision_reward = -10 #マルチエージェントの時に使用
@@ -63,8 +67,9 @@ class Maze():
 
     #環境の初期化を行う
     def reset(self):
-        self.agent_state = self.init_agent_state #エージェントの位置を初期化 *とりまこれだけ
-        return self.agent_state
+        for i in range(self.agent_num):
+            self.agents_state[i]=self.init_agent_state #エージェントの位置を初期化 *とりまこれだけ
+        return self.init_agent_state
         
     #遷移のための関数    return 遷移確率
     def transit_func(self, state, action):
@@ -107,12 +112,13 @@ class Maze():
         return next_state, reward, done
     
     #1 step turn
-    def step(self, action):
+    def step(self, agent_number, action):
         #TODO
-        next_state, reward, done = self.transit(self.agent_state, action)
+        self._set_now_agent(agent_number)
+        next_state, reward, done = self.transit(self.agents_state[self.now_agent], action)
         
         if next_state is not None:
-            self.agent_state = next_state
+            self.agents_state[self.now_agent] = next_state
             
         return next_state, reward, done
 
@@ -172,3 +178,6 @@ class Maze():
             done = True
 
         return reward, done
+
+    def _set_now_agent(self, number):
+        self.now_agent = number
