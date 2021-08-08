@@ -4,6 +4,7 @@ from maze import Action
 import json
 from datetime import datetime as dt
 import os
+import sys
 
 #function about agent
 def trans_ntoa(action_n):
@@ -49,3 +50,20 @@ def resultdir_make(title):
     newdir = predir+dirname+"/"
     os.mkdir(newdir)
     return newdir
+
+def maze_open(file):
+    data = []
+    try:
+        f = open(file, 'r', encoding='utf-8')
+    except Exception:
+        print("open error. not found file:", str(file))
+        sys.exit(1)
+    for line in f:
+        line = line.strip() #前後空白削除
+        line = line.replace('\n','') #末尾の\nの削除
+        line = line.split(" ") #分割
+        for i in range(len(line)):
+            line[i] = int(line[i])
+        data.append(line)
+    f.close()
+    return data

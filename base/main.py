@@ -11,13 +11,8 @@ def main():
     #結果を格納するディレクトリを準備
     dirname = resultdir_make(config["exp_title"])
 
-    # 環境データ
-    grid = [
-        [9, 0, 0, 2],
-        [9, 0, 9, 9],
-        [9, 0, 9, 9],
-        [0, 0, 0, 0],
-    ]
+    #環境データ
+    grid = maze_open(config["maze_data"])
 
     env = Maze(grid)
     agent = QLearningAgent(env, epsilon=0.3)
