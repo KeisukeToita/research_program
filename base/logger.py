@@ -31,18 +31,30 @@ class Logger:
 
     def log_dir_mk(self):
         #記録用のディレクトリを作成
+
+        #大枠の3つ
         self.reward_dir = self.dirname+"reward/"
         os.mkdir(self.reward_dir)
         self.transition_dir = self.dirname+"agents_transition/"
         os.mkdir(self.transition_dir)
-        self.Agents_transition_dir=[]
-        for i in range(self.agent_n):
-            Agent_dir = self.transition_dir+"Agent"+str(i+1)+"/"
-            self.Agents_transition_dir.append(Agent_dir)
-            os.mkdir(Agent_dir)
+        self.policy_dir = self.dirname+"policy/"
+        os.mkdir(self.policy_dir)
 
-        self.polisy_dir = self.dirname+"policy/"
-        os.mkdir(self.polisy_dir)
+        #各エージェントについて分ける
+        self.Agents_transition_dir=[]
+        self.Agents_reward_dir=[]
+        self.Agents_policy_dir=[]
+        for i in range(self.agent_n):
+            tAgent_dir = self.transition_dir+"Agent"+str(i+1)+"/"
+            pAgent_dir = self.policy_dir+"Agent"+str(i+1)+"/"
+            rAgent_dir = self.reward_dir+"Agent"+str(i+1)+"/"
+            self.Agents_transition_dir.append(tAgent_dir)
+            self.Agents_policy_dir.append(pAgent_dir)
+            self.Agents_reward_dir.append(rAgent_dir)
+            os.mkdir(tAgent_dir)
+            os.mkdir(pAgent_dir)
+            os.mkdir(rAgent_dir)
+            
 
 
     #状態遷移の記録用関数
@@ -64,6 +76,9 @@ class Logger:
                 writer = csv.DictWriter(f, fieldnames=self.state_transition_header_label)
                 writer.writeheader()
                 writer.writerows(self.experience_logs[i])
+
+    #Qテーブル記録用関数
+    
 
     #値のセット
     def set_file_name(self, file_name):

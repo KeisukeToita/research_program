@@ -85,8 +85,8 @@ class QLearningAgent(Agent):
             return trans_ntoa(np.random.randint(len(self.actions)))
         else:
             # 現時点の良い行動を選択
-            if now_state in self.Q and sum(self.Q[now_state]) != 0:
-                return trans_ntoa(np.argmax(self.Q[now_state]))
+            if now_state.repr() in self.Q and sum(self.Q[now_state.repr()]) != 0:
+                return trans_ntoa(np.argmax(self.Q[now_state.repr()]))
             else:
                 return trans_ntoa(np.random.randint(len(self.actions)))
 
@@ -96,9 +96,9 @@ class QLearningAgent(Agent):
 
     def learn(self, s, n_s, action, reward):
         a = trans_aton(action)
-        gain = reward + self.gamma * max(self.Q[n_s])
-        estimated = self.Q[s][a]
-        self.Q[s][a] += self.alpha * (gain - estimated)
+        gain = reward + self.gamma * max(self.Q[n_s.repr()])
+        estimated = self.Q[s.repr()][a]
+        self.Q[s.repr()][a] += self.alpha * (gain - estimated)
 
             
 

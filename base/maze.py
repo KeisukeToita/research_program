@@ -2,7 +2,7 @@
 
 #ライブラリimport
 import numpy as np
-
+import copy
 from agent import *
 
 #environment関連のクラス
@@ -26,7 +26,7 @@ class State():
         return hash((self.row, self.column))
 
     # 同値判定
-    def __eq__(self, other):
+    def equal(self, other):
         return self.row == other.row and self.column == other.column
 
 # 行動の定義
@@ -38,22 +38,34 @@ class Action(Enum):
     RIGHT = 3
     STAY = 4
 
-
+"""
+迷路の情報
+0:通路
+9:壁
+1~8:報酬用 reward_func関数にて設定
+テキストファイル形式
+"""
 class Maze():
 
-    def __init__(self, grid, init_agent_state=None, agent_num=1):
+    def __init__(self, grid, init_agents_state=None, agent_num=1):
 
+        #about maze & agent
         self.grid = grid
         self.agent_num = agent_num
         self.agents_state = []
         for i in range(agent_num):
             self.agents_state.append(State())
 
-        self.init_agent_state = State(3,0) #初期位置
+        self.final_agents_state=[]#1エピソード終了後のエージェントを幽霊化させるための状態
+        for i in range(agent_num):
+            self.final_agents_state.append(State(99, i+1))
+
+        #self.init_agent_state = State(3,0) #初期位置
+        self.init_agents_state = init_agents_state
         self.now_agent=0
 
         self.default_reward = -0.04
-        self.collision_reward = -10 #マルチエージェントの時に使用
+        self.colision_reward = -10 #マルチエージェントの時に使用
     
     @property
     def row_length(self):
@@ -67,9 +79,8 @@ class Maze():
 
     #環境の初期化を行う
     def reset(self):
-        for i in range(self.agent_num):
-            self.agents_state[i]=self.init_agent_state #エージェントの位置を初期化 *とりまこれだけ
-        return self.init_agent_state
+        self.agents_state = copy.deepcopy(self.init_agents_state) #エージェントの位置を初期化 *とりまこれだけ
+        return self.agents_state
         
     #遷移のための関数    return 遷移確率
     def transit_func(self, state, action):
@@ -174,10 +185,22 @@ class Maze():
             reward = -10
             done = True
         elif attribute == 2:
-            reward = 1000
+            reward = 10
             done = True
 
         return reward, done
 
+    def colision_judge(self, next_states, rewards, dones):#衝突判定 衝突している者たちの報酬と
+        n_s2 = copy.deepcopy(next_states)
+        for i in range(len(next_states)):
+            for j in range(len(n_s2)):
+                if i != j and next_states[i].equal(n_s2[j]):#衝突しているエージェントについて書き換える
+                    rewards[i] = self.colision_reward
+                    dones[i] = True
+        return  rewards, dones
+
     def _set_now_agent(self, number):
         self.now_agent = number
+
+    def get_finish_state(self, number):
+        return self.final_agents_state[number]

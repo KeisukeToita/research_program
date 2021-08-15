@@ -1,6 +1,6 @@
 #適当に作った関数を入れとくファイル
 
-from maze import Action
+from maze import *
 import json
 from datetime import datetime as dt
 import os
@@ -46,7 +46,7 @@ def resultdir_make(title):
     tdatetime = dt.now()
     tstr = tdatetime.strftime('%Y%m%d%H%M')
     dirname = tstr + "_" + title
-    predir = "../result/"
+    predir = "../../result/"
     newdir = predir+dirname+"/"
     os.mkdir(newdir)
     return newdir
@@ -67,3 +67,12 @@ def maze_open(file):
         data.append(line)
     f.close()
     return data
+
+def get_init_agents_state(config):
+    init_agents_state=[]
+    for i in range(config["agent_num"]):
+        s=config["init_agent_state_"+str(i+1)]
+        state=State(s["row"], s["column"])
+        init_agents_state.append(state)
+
+    return init_agents_state
