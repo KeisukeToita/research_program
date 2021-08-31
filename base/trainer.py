@@ -2,18 +2,22 @@
 from agent import *
 from maze import *
 from logger import *
+import numpy as np
+import copy
 
 #Single agent Trainer
 class Trainer():
 
-    def __init__(self, agents, env, episode=1, report_interval=50, dirname=None):
+    def __init__(self, agents, env, episode=1, report_interval=50, dirname=None, seed=1):
         self.env = env
         self.agents = agents #listにした
 
         self.episode = episode
         self.report_interval = report_interval
 
-        self.logger = Logger(dirname, len(agents)) #Loggerにエージェントの数を入力
+        self.seed = seed
+
+        #self.logger = Logger(dirname, len(agents)) #Loggerにエージェントの数を入力
 
     def train(self):
         for i in range(self.episode):
@@ -103,9 +107,8 @@ class QLearningTrainer(Trainer):#マルチ用に改変
     def train(self):
         for i in range(self.episode):
             if (i+1) % self.report_interval == 0:
-                print("Episode {}: Agent gets {} reward.".format(i+1, self.one_episode(i+1)))
-        
-        print(self.agents[0].Q)
+                reward, step = self.one_episode(i+1)
+                print("Episode {}: Agent gets {} reward. {} step".format(i+1, reward, step))
 
     def one_episode(self, episode_n):
         agents_state=[]
@@ -156,4 +159,246 @@ class QLearningTrainer(Trainer):#マルチ用に改変
         if episode_n % self.report_interval == 0:
             self.logger.state_transition_write_csv(episode_n)
 
-        return total_reward
+        return total_reward, step_n
+
+class SOMQLearningTrainer(Trainer):
+    def __init__(self, agents, env, episode=1, report_interval=50, dirname=None, seed=1):
+        print("~~~ Q_Learning_START ~~~")
+        super().__init__(agents, env, episode, report_interval, dirname, seed)
+
+        self.logger = Logger_with_goal(dirname, len(agents))
+
+        self.estimate_rates=np.zeros(len(self.agents))
+        self.estimate_counts=np.zeros(len(self.agents))
+
+        self.all_estimate_rates=[]
+
+    def reset(self):
+        self.estimate_rates=np.zeros(len(self.agents))
+        self.estimate_counts=np.zeros(len(self.agents))
+        for i in range(len(self.agents)):
+            self.agents[i].seed_reset()
+
+    def all_seed_train(self):
+        for i in range(self.seed):
+            np.random.seed(i)
+            self.reset()
+            self.train()
+
+        self.logger.show_ave_estimate_rate()
+        
+
+    def train(self):
+        #train loop
+        self.logger.seed_count()
+
+        for i in range(self.episode):
+            if (i+1) % self.report_interval == 0:
+                reward, step = self.one_episode(i+1)
+                print("Episode {}: Agent gets {} reward. {} step".format(i+1, reward, step))
+            else:
+                self.one_episode(i+1)
+
+        #estimate transition save
+        self.logger.show_estimate_rate()
+
+        #show estimate rate
+        for i in range(len(self.agents)):
+            self.estimate_rates[i] = self.estimate_counts[i]/self.episode
+            print("Agent {} rate: {}".format(i, self.estimate_rates[i]))
+
+    def one_episode(self, episode_n):
+        #init state & goal
+        agents_state=[]
+        agents_done=[]
+        agents_goal=[]
+
+        agents_state = self.env.reset()
+        for i in range(len(self.agents)):
+            agents_done.append(False)
+            self.agents[i].reset()
+            agents_goal.append(self.agents[i].get_my_goal())
+
+        #TODO change general process
+        other_goals=[]
+        other_goals.append(self.agents[1].get_my_goal())
+        other_goals.append(self.agents[0].get_my_goal())
+
+        #環境側に各エージェントの目的をセット
+        self.env.set_agents_goal(agents_goal)
+
+        total_reward = 0
+
+        self.logger.init_exp_log()
+        step_n = 1
+
+        while False in agents_done:
+            actions, next_states, rewards=[],[],[]
+            
+            #choice actions
+            for i in range(len(self.agents)):
+                actions.append(self.agents[i].greedy_act(agents_state[i]))
+            
+            #one step
+            for i in range(len(self.agents)):
+                if agents_done[i] == False:
+                    next_state, reward, done = self.env.step(i,actions[i])
+                else:
+                    actions[i]=self.env.actions[4] #STAY
+                    next_state, reward, done = self.env.get_finish_state(i), int(0), True
+
+                next_states.append(next_state)
+                rewards.append(reward)
+                agents_done[i]=done
+            
+            #is_colision??? 
+            #rewards, agents_done = self.env.colision_judge(next_states, rewards, agents_done)
+
+            #TODO generate the process
+            #make other_states & action 一旦入れ替えるでオケかな
+         
+            other_states=[]
+            other_actions=[]
+            other_states.append(agents_state[1])
+            other_states.append(agents_state[0])
+            other_actions.append(actions[1])
+            other_actions.append(actions[0])
+            
+            
+            #learn
+            for i in range(len(self.agents)):
+                self.agents[i].learn(agents_state[i], next_states[i], actions[i], rewards[i])
+           
+            est_other_goals=[]
+            #estimate
+            for i in range(len(self.agents)):
+                est_other_goals.append(self.agents[i].estimate_other_goal(other_states[i], other_actions[i]))
+           
+            #calcurate total reward
+            total_reward += sum(rewards)
+            self.logger.add_experience_with_goal(step_n, agents_state, actions, rewards, total_reward, agents_goal, est_other_goals)
+           
+            #move next_state
+            for i in range(len(self.agents)):
+                agents_state[i] = next_states[i]
+           
+            step_n += 1
+            
+        #calcurate estimate rate and add to logger 
+        for i in range(len(self.agents)):
+            if other_goals[i] == self.agents[i].get_est_other_goal():
+                self.estimate_counts[i] += 1
+            self.estimate_rates[i] = self.estimate_counts[i]/(episode_n+1)
+            self.logger.add_estimate_rate(i, self.estimate_rates[i])
+                
+        #save with csv file
+        if episode_n % self.report_interval == 0:
+            self.logger.state_transition_with_goal_write_csv(episode_n)
+            for i in range(len(self.agents)):
+                self.logger.all_q_table_write_csv(episode_n, self.agents[i].Q, i,self.env.row_length, self.env.column_length)
+            
+        return total_reward, step_n
+
+class SOMQLearningTrainer_Gchange(SOMQLearningTrainer):
+
+    def __init__(self, agents, env, episode=1, report_interval=50, dirname=None, seed=1):
+        super().__init__(agents, env, episode, report_interval, dirname, seed)
+
+    def one_episode(self, episode_n):
+        #init state & goal
+        agents_state=[]
+        agents_done=[]
+        agents_goal=[]
+
+        agents_state = self.env.reset()
+        for i in range(len(self.agents)):
+            agents_done.append(False)
+            self.agents[i].reset(agents_state[i])
+            agents_goal.append(self.agents[i].get_my_goal())
+
+        #TODO change general process
+        other_goals=[]
+        other_goals.append(self.agents[1].get_my_goal())
+        other_goals.append(self.agents[0].get_my_goal())
+
+        #環境側に各エージェントの目的をセット
+        self.env.set_agents_goal(agents_goal)
+
+        total_reward = 0
+
+        self.logger.init_exp_log()
+        step_n = 1
+
+        while False in agents_done:
+            actions, next_states, rewards=[],[],[]
+            #choice actions
+            for i in range(len(self.agents)):
+                actions.append(self.agents[i].greedy_act(agents_state[i]))
+            
+            #one step
+            for i in range(len(self.agents)):
+                if agents_done[i] == False:
+                    next_state, reward, done = self.env.step(i,actions[i])
+                else:
+                    actions[i]=self.env.actions[4] #STAY
+                    next_state, reward, done = self.env.get_finish_state(i), int(0), True
+
+                next_states.append(next_state)
+                rewards.append(reward)
+                agents_done[i]=done
+            
+            #is_colision??? 
+            #rewards, agents_done = self.env.colision_judge(next_states, rewards, agents_done)
+
+            #TODO generate the process
+            #make other_states & action 一旦入れ替えるでオケかな
+         
+            other_states=[]
+            other_actions=[]
+            other_states.append(agents_state[1])
+            other_states.append(agents_state[0])
+            other_actions.append(actions[1])
+            other_actions.append(actions[0])
+            
+            
+            #learn
+            for i in range(len(self.agents)):
+                self.agents[i].learn(agents_state[i], next_states[i], actions[i], rewards[i])
+           
+            est_other_goals=[]
+            #estimate
+            for i in range(len(self.agents)):
+                est_other_goals.append(self.agents[i].estimate_other_goal(other_states[i], other_actions[i]))
+
+            #calcurate total reward
+            total_reward += sum(rewards)
+            self.logger.add_experience_with_goal(step_n, agents_state, actions, rewards, total_reward, agents_goal, est_other_goals)
+
+            #update_goal_agent2
+            if agents_done[1] == False:
+                c_goal = self.agents[1].goal_change(next_states[1])
+                if c_goal != agents_goal[1]:
+                    agents_goal[1] = c_goal
+                    self.env.set_agents_goal(agents_goal)
+                    other_goals[0] = c_goal
+           
+            #move next_state
+            for i in range(len(self.agents)):
+                agents_state[i] = next_states[i]
+           
+            step_n += 1
+            
+        #calcurate estimate rate and add to logger 
+        for i in range(len(self.agents)):
+            if other_goals[i] == self.agents[i].get_est_other_goal():
+                self.estimate_counts[i] += 1
+            self.estimate_rates[i] = self.estimate_counts[i]/(episode_n+1)
+            self.logger.add_estimate_rate(i, self.estimate_rates[i])
+                
+        #save with csv file
+        if episode_n % self.report_interval == 0:
+            self.logger.state_transition_with_goal_write_csv(episode_n)
+            for i in range(len(self.agents)):
+                self.logger.all_q_table_write_csv(episode_n, self.agents[i].Q, i,self.env.row_length, self.env.column_length)
+            
+        return total_reward, step_n

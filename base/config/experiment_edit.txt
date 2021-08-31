@@ -1,8 +1,10 @@
 {"exp_title": "MultiQAgentTrain",
 "seed": 10,
-"episode": 100,
-"repo&write_interval": 1,
+"episode": 1000,
+"repo&write_interval": 10,
 "maze_data":"maze1.txt",
 "agent_num": 1,
+"is_goal": 0,
+"agent_goal_num": 4,
 "init_agent_state_1": {"row":3, "column":0},
 "init_agent_state_2": {"row":1, "column":0}}
