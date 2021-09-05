@@ -210,7 +210,7 @@ class Maze():
         attribute = self.grid[state.row][state.column]
 
         if attribute-1 == self.agents_goal[agent_number]:
-            reward = 10000
+            reward = 10
             done = True
 
         return reward, done
@@ -229,3 +229,11 @@ class Maze():
 
     def get_finish_state(self, number):
         return self.final_agents_state[number]
+
+    def get_goal_states(self):#4 goals at 4 corners only
+        goal1 = State(0,self.column_length)
+        goal2 = State(self.row_length,self.column_length)
+        goal3 = State(self.row_length,0)
+        goal4 = State(0,self.column_length)
+
+        return [goal1, goal2, goal3, goal4]

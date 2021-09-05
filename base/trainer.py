@@ -1,9 +1,12 @@
 # Training全体を受け持つTrainerクラスを集めたファイル
+from matplotlib.pyplot import step
 from agent import *
 from maze import *
 from logger import *
 import numpy as np
 import copy
+
+np.random.seed(0)
 
 #Single agent Trainer
 class Trainer():
@@ -166,7 +169,7 @@ class SOMQLearningTrainer(Trainer):
         print("~~~ Q_Learning_START ~~~")
         super().__init__(agents, env, episode, report_interval, dirname, seed)
 
-        self.logger = Logger_with_goal(dirname, len(agents))
+        self.logger = Logger(dirname, len(agents))
 
         self.estimate_rates=np.zeros(len(self.agents))
         self.estimate_counts=np.zeros(len(self.agents))
@@ -181,11 +184,12 @@ class SOMQLearningTrainer(Trainer):
 
     def all_seed_train(self):
         for i in range(self.seed):
-            np.random.seed(i)
+            print("{} seed train".format(i+1))
             self.reset()
             self.train()
 
         self.logger.show_ave_estimate_rate()
+        self.logger.show_ave_estimate_rate_400_ave()
         
 
     def train(self):
@@ -257,13 +261,8 @@ class SOMQLearningTrainer(Trainer):
             #TODO generate the process
             #make other_states & action 一旦入れ替えるでオケかな
          
-            other_states=[]
-            other_actions=[]
-            other_states.append(agents_state[1])
-            other_states.append(agents_state[0])
-            other_actions.append(actions[1])
-            other_actions.append(actions[0])
-            
+            other_states=[agents_state[1], agents_state[0]]
+            other_actions=[actions[1], actions[0]]            
             
             #learn
             for i in range(len(self.agents)):
@@ -276,7 +275,7 @@ class SOMQLearningTrainer(Trainer):
            
             #calcurate total reward
             total_reward += sum(rewards)
-            self.logger.add_experience_with_goal(step_n, agents_state, actions, rewards, total_reward, agents_goal, est_other_goals)
+            self.logger.add_experience(step_n, agents_state, actions, rewards, total_reward, agents_goal, est_other_goals)
            
             #move next_state
             for i in range(len(self.agents)):
@@ -293,7 +292,7 @@ class SOMQLearningTrainer(Trainer):
                 
         #save with csv file
         if episode_n % self.report_interval == 0:
-            self.logger.state_transition_with_goal_write_csv(episode_n)
+            self.logger.state_transition_write_csv(episode_n)
             for i in range(len(self.agents)):
                 self.logger.all_q_table_write_csv(episode_n, self.agents[i].Q, i,self.env.row_length, self.env.column_length)
             
@@ -304,6 +303,42 @@ class SOMQLearningTrainer_Gchange(SOMQLearningTrainer):
     def __init__(self, agents, env, episode=1, report_interval=50, dirname=None, seed=1):
         super().__init__(agents, env, episode, report_interval, dirname, seed)
 
+    def all_seed_train(self):
+        for i in range(self.seed):
+            print("{} seed train".format(i+1))
+            self.reset()
+            self.one_seed_train()
+
+        self.logger.show_ave_estimate_rate()
+        self.logger.show_ave_estimate_rate_400_ave()
+
+        self.logger.save_all_seed_total_reward_ave_graph()
+
+    def one_seed_train(self):
+        #train loop
+        self.logger.seed_count()
+
+        for i in range(self.episode):
+            if (i+1) % self.report_interval == 0:
+                reward, step = self.one_episode(i+1)
+                print("Episode {}: Agent gets {} reward. {} step".format(i+1, reward, step))
+            else:
+                self.one_episode(i+1)
+
+        #estimate transition save
+        self.logger.show_estimate_rate()
+        self.logger.show_estimate_rate_400_ave()
+
+        #show estimate rate
+        """
+        for i in range(len(self.agents)):
+            self.estimate_rates[i] = self.estimate_counts[i]/self.episode
+            print("Agent {} rate: {}".format(i, self.estimate_rates[i]))
+        """
+
+        #save the total_reward_graph
+        self.logger.save_total_reward_ave_graph()
+
     def one_episode(self, episode_n):
         #init state & goal
         agents_state=[]
@@ -313,20 +348,18 @@ class SOMQLearningTrainer_Gchange(SOMQLearningTrainer):
         agents_state = self.env.reset()
         for i in range(len(self.agents)):
             agents_done.append(False)
-            self.agents[i].reset(agents_state[i])
+            self.agents[i].reset(agents_state[i], self.env.get_goal_states())
             agents_goal.append(self.agents[i].get_my_goal())
 
         #TODO change general process
-        other_goals=[]
-        other_goals.append(self.agents[1].get_my_goal())
-        other_goals.append(self.agents[0].get_my_goal())
+        other_goals=[self.agents[1].get_my_goal(), self.agents[0].get_my_goal()]
 
         #環境側に各エージェントの目的をセット
         self.env.set_agents_goal(agents_goal)
 
         total_reward = 0
 
-        self.logger.init_exp_log()
+        self.logger.init_list_of_dict()
         step_n = 1
 
         while False in agents_done:
@@ -353,12 +386,8 @@ class SOMQLearningTrainer_Gchange(SOMQLearningTrainer):
             #TODO generate the process
             #make other_states & action 一旦入れ替えるでオケかな
          
-            other_states=[]
-            other_actions=[]
-            other_states.append(agents_state[1])
-            other_states.append(agents_state[0])
-            other_actions.append(actions[1])
-            other_actions.append(actions[0])
+            other_states=[agents_state[1], agents_state[0]]
+            other_actions=[actions[1], actions[0]]
             
             
             #learn
@@ -370,9 +399,21 @@ class SOMQLearningTrainer_Gchange(SOMQLearningTrainer):
             for i in range(len(self.agents)):
                 est_other_goals.append(self.agents[i].estimate_other_goal(other_states[i], other_actions[i]))
 
+            for i in range(len(self.agents)):
+                if other_goals[i] == self.agents[i].get_est_other_goal():
+                    self.logger.add_is_estimate(i, True)
+                else:
+                    self.logger.add_is_estimate(i, False)
+            
             #calcurate total reward
             total_reward += sum(rewards)
-            self.logger.add_experience_with_goal(step_n, agents_state, actions, rewards, total_reward, agents_goal, est_other_goals)
+
+            #log_experience
+            self.logger.add_experience(step_n, agents_state, actions, rewards, total_reward, agents_goal, est_other_goals)
+            
+            #log estimation score
+            for i in range(len(self.agents)):
+                self.logger.add_estimate_value(i, step_n, self.agents[i].get_estimation_value())
 
             #update_goal_agent2
             if agents_done[1] == False:
@@ -387,6 +428,9 @@ class SOMQLearningTrainer_Gchange(SOMQLearningTrainer):
                 agents_state[i] = next_states[i]
            
             step_n += 1
+
+        self.logger.add_total_reward(total_reward)
+        self.logger.add_total_reward_ave()
             
         #calcurate estimate rate and add to logger 
         for i in range(len(self.agents)):
@@ -394,10 +438,13 @@ class SOMQLearningTrainer_Gchange(SOMQLearningTrainer):
                 self.estimate_counts[i] += 1
             self.estimate_rates[i] = self.estimate_counts[i]/(episode_n+1)
             self.logger.add_estimate_rate(i, self.estimate_rates[i])
+
+        self.logger.add_estimate_rate_400_ave()
                 
         #save with csv file
         if episode_n % self.report_interval == 0:
-            self.logger.state_transition_with_goal_write_csv(episode_n)
+            self.logger.state_transition_write_csv(episode_n)
+            self.logger.estimate_value_write_csv(episode_n)
             for i in range(len(self.agents)):
                 self.logger.all_q_table_write_csv(episode_n, self.agents[i].Q, i,self.env.row_length, self.env.column_length)
             

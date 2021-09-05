@@ -139,10 +139,6 @@ class SOMQLearningAgent(Agent):
             for j in range(self.number_of_goals):
                 self.Q[i].append(defaultdict(lambda: [0] * len(self.actions)))
 
-        self.infer_steps = 0
-        self.estimation_value_other_goal = np.zeros(self.number_of_goals)
-        self.estimation_score = np.zeros(self.number_of_goals)
-
     def reset(self):
         #エピソード開始時用初期化関数
         self.est_other_goal = np.random.randint(self.number_of_goals)
@@ -183,6 +179,7 @@ class SOMQLearningAgent(Agent):
             for other_goal in range(self.number_of_goals):
                 if not (0 in self.Q[other_goal][self.my_goal][other_state.repr()]):
                     policy_each_goal.append(self.Q[other_goal][self.my_goal][other_state.repr()][other_action]/ sum(self.Q[other_goal][self.my_goal][other_state.repr()]))
+                    #policy_each_goal.append(self.Q[other_goal][self.my_goal][other_state.repr()][other_action])
                 else :
                     policy_each_goal.append(1/self.number_of_goals)
             self.estimation_value_other_goal += policy_each_goal
@@ -207,6 +204,9 @@ class SOMQLearningAgent(Agent):
 
     def get_est_other_goal(self):
         return self.est_other_goal
+    
+    def get_estimation_value(self):
+        return self.estimation_value_other_goal
 
 
 class SOMQLearningAgent_Gchange(SOMQLearningAgent):
@@ -215,17 +215,10 @@ class SOMQLearningAgent_Gchange(SOMQLearningAgent):
 
         self.change_rate=g_change_rate
 
-    def reset(self, ini_state):
+    def reset(self, ini_state, goal_states):
         self.est_other_goal = np.random.randint(self.number_of_goals)
         self.my_goal = np.random.randint(self.number_of_goals)
-        if self.my_goal == 0:
-            self.my_goal_state = State(0,7)
-        elif self.my_goal == 1:
-            self.my_goal_state = State(7,7)
-        elif self.my_goal == 2:
-            self.my_goal_state = State(7,0)
-        elif self.my_goal == 3:
-            self.my_goal_state = State(0,0)
+        self.my_goal_state = goal_states[self.my_goal]
 
         self.estimation_value_other_goal = np.zeros(self.number_of_goals)
         self.estimation_score = np.zeros(self.number_of_goals)
