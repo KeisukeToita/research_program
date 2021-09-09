@@ -381,7 +381,7 @@ class SOMQLearningTrainer_Gchange(SOMQLearningTrainer):
                 agents_done[i]=done
             
             #is_colision??? 
-            #rewards, agents_done = self.env.colision_judge(next_states, rewards, agents_done)
+            rewards, agents_done = self.env.colision_judge(next_states, rewards, agents_done)
 
             #TODO generate the process
             #make other_states & action 一旦入れ替えるでオケかな
