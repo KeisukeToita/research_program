@@ -21,11 +21,21 @@ def main():
     #エージェント
     agents=[]
     for i in range(config["agent_num"]):
-        agents.append(Base_Agent(env, epsilon=config["epsilon"], gamma=config["gamma"], alpha=config["alpha"]))
+        #agents.append(Base_Agent(env, epsilon=config["epsilon"], gamma=config["gamma"], alpha=config["alpha"]))
+        agents.append(ActPlanAgent(env, config["agent_goal_num"], epsilon=config["epsilon"], gamma=config["gamma"], alpha=config["alpha"]))
         
     #トレーナー
     #trainer = SOMQLearningTrainer_Gchange(agents, env, config["episode"], config["repo&write_interval"], dirname, config['seed'])
+    """
     trainer = Base_Trainer(agents = agents,
+                            env = env,
+                            episode = config["episode"],
+                            report_interval = config["repo&write_interval"],
+                            dirname = dirname,
+                            seed = config['seed'],
+                            is_colision = config["is_colision"])
+    """
+    trainer = ActPlanTrainer(agents = agents,
                             env = env,
                             episode = config["episode"],
                             report_interval = config["repo&write_interval"],

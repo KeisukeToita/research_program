@@ -33,7 +33,20 @@ class Actplan_Logger:
         self.state_transition_header_label=['Step', 'state', 'action', 'reward', 'total_reward']
         self.Q_table_header_label = ['State', '↑', '↑→', '→', '↓→', '↓', '←↓', '←', '←↑']
         self.state_transition_with_goal_header_label=['Step', 'state', 'action', 'reward', 'total_reward', 'my_goal', 'est_other_goal']
-        self.goal_estimate_label = ['step', 'goal1', 'goal2','goal3','goal4',]
+        self.state_transition_with_actplan_relative_state_header_label=['Step',
+                                                                        'state',
+                                                                        'other_state',
+                                                                        'relative_state',
+                                                                        'mode',
+                                                                        'action',
+                                                                        'reward',
+                                                                        'total_reward',
+                                                                        'my_goal',
+                                                                        'est_other_goal',
+                                                                        'my_actplan',
+                                                                        'est_other_actplan']
+        self.goal_estimate_label = ['step', 'goal1', 'goal2','goal3','goal4']
+        self.actplan_estimate_label = ['step', 'straight', 'go_left', 'go_right']
 
         #list of graph
         self.all_seed_estimate_rate_logs = []
@@ -109,22 +122,48 @@ class Actplan_Logger:
         
 
     #state_transition_log func
-    def add_experience(self, step_n, agent_state, a, reward, total_reward, my_goals=None, est_other_goals=None):
+    def add_experience(self,
+                       step_n,
+                       agent_state,
+                       a,
+                       reward,
+                       total_reward,
+                       label,
+                       mode,
+                       other_states=None,
+                       relative_states=None,
+                       my_goals=None,
+                       est_other_goals=None,
+                       my_actplans=None,
+                       est_other_actplans=None):
         for i in range(self.agent_n):
-            if my_goals == None:
+            if label == "NONE":
                 data_dict = {'Step': step_n,
                             'state': agent_state[i].repr(),
                             'action': a[i],
                             'reward': reward[i],
                             'total_reward': total_reward}
-            else:
+            elif label == "GOAL":
                 data_dict = {'Step': step_n,
-                        'state': agent_state[i].repr(),
-                        'action': a[i],
-                        'reward': reward[i],
-                        'total_reward': total_reward,
-                        'my_goal': my_goals[i],
-                        'est_other_goal': est_other_goals[i]}
+                            'state': agent_state[i].repr(),
+                            'action': a[i],
+                            'reward': reward[i],
+                            'total_reward': total_reward,
+                            'my_goal': my_goals[i],
+                            'est_other_goal': est_other_goals[i]}
+            elif label == "ACTPLAN":
+                data_dict = {'Step':step_n,
+                            'state':agent_state[i].repr(),
+                            "other_state":other_states[i].repr(),
+                            'relative_state':relative_states[i].repr(),
+                            'mode':mode,
+                            'action':a[i],
+                            'reward':reward[i],
+                            'total_reward':total_reward,
+                            'my_goal':my_goals[i],
+                            'est_other_goal':est_other_goals[i],
+                            'my_actplan':my_actplans[i],
+                            'est_other_actplan':est_other_actplans[i]}
 
             self.experience_logs[i].append(data_dict)
 
@@ -150,7 +189,7 @@ class Actplan_Logger:
                     writer.writerows(self.experience_logs[i])
 
     #Q table save function
-    def q_table_write_csv(self, episode_n, Q, agent_n, row, column, my_goal=None, other_goal=None):
+    def q_table_write_csv(self, episode_n, Q, agent_n, row, column, mode, my_goal=None, other_goal=None):
         Q_dict=[]
         for i in range(row):
             for j in range(column):
@@ -164,22 +203,32 @@ class Actplan_Logger:
                                 '←':Q[State(i,j).repr()][6],
                                 '←↑':Q[State(i,j).repr()][7]})
 
-        if my_goal == None:#not goal
+        if mode == "NONE":
             filename = self.Agents_policy_dir[agent_n]+"episode"+str(episode_n)+".csv"
-        else:#goal
-            filename = self.Agents_policy_dir[agent_n]+"episode"+str(episode_n)+"/Q-table"+str(my_goal)+str(other_goal)+".csv"
+        elif mode == "GOAL":#goal
+            filename = self.Agents_policy_dir[agent_n]+"episode"+str(episode_n)+"/goal/Q-table"+str(my_goal)+str(other_goal)+".csv"
+        elif mode == "ACTPLAN":
+            filename = self.Agents_policy_dir[agent_n]+"episode"+str(episode_n)+"/actplan/Q-table"+str(my_goal)+str(other_goal)+".csv"
 
         with open(filename, 'w', encoding='shift-jis', newline='') as f:
                 writer = csv.DictWriter(f, fieldnames=self.Q_table_header_label)
                 writer.writeheader()
                 writer.writerows(Q_dict)
 
-    def all_goal_q_table_write_csv(self, episode_n, Q, agent_n, row, column):
-        goal_num = 4
-        os.mkdir(self.Agents_policy_dir[agent_n]+"episode"+str(episode_n)+"/")
-        for i in range(goal_num):
-            for j in range(goal_num):
-                self.q_table_write_csv(episode_n, Q[i][j], agent_n, row, column, i, j)
+    def all_goal_q_table_write_csv(self, episode_n, Q, agent_n, row, column, mode):
+        if mode == "GOAL":
+            goal_num = 4
+            os.makedirs(self.Agents_policy_dir[agent_n]+"episode"+str(episode_n)+"/goal/")
+            for i in range(goal_num):
+                for j in range(goal_num):
+                    self.q_table_write_csv(episode_n, Q[i][j], agent_n, row, column, mode, i, j)
+        elif mode == "ACTPLAN":
+            actplan_num = 4
+            os.makedirs(self.Agents_policy_dir[agent_n]+"episode"+str(episode_n)+"/actplan/")
+            for i in range(actplan_num):
+                for j in range(actplan_num):
+                    self.q_table_write_csv(episode_n, Q[i][j], agent_n, row, column, mode, i, j)
+        
 
     #estimate_Rate_log
     def add_estimate_rate(self, agent_num, rate):
