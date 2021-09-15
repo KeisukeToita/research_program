@@ -22,7 +22,7 @@ def main():
     agents=[]
     for i in range(config["agent_num"]):
         #agents.append(Base_Agent(env, epsilon=config["epsilon"], gamma=config["gamma"], alpha=config["alpha"]))
-        agents.append(ActPlanAgent(env, config["agent_goal_num"], epsilon=config["epsilon"], gamma=config["gamma"], alpha=config["alpha"]))
+        agents.append(ActPlanAgent(env, config["agent_goal_num"], epsilon=config["epsilon"], gamma=config["gamma"], alpha=config["alpha"], act_mode=config["act_mode"]))
         
     #トレーナー
     #trainer = SOMQLearningTrainer_Gchange(agents, env, config["episode"], config["repo&write_interval"], dirname, config['seed'])

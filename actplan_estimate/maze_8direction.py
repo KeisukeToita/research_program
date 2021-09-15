@@ -30,13 +30,13 @@ class State():
 
 class Action(Enum):#TODO 各所８方向 & STAY番号を８に変更
     U = 0 #UP
-    UR = 1 #UP&LEFT
-    R = 2 #LEFT
-    DR = 3 #DOWN&LEFT
+    UR = 1 #UP&RIGHT
+    R = 2 #RIGHT
+    DR = 3 #DOWN&RIGHT
     D = 4 #DOWN
-    DL = 5 #DOWN&RIGHT
-    L = 6 #RIGHT
-    UL = 7 #UP&RIGHT
+    DL = 5 #DOWN&LEFT
+    L = 6 #LEFT
+    UL = 7 #UP&LEFT
     S = 8 #STAY
 
 """
@@ -54,15 +54,13 @@ class Maze_8direction():
         self.grid = grid
         self.agent_num = agent_num
         self.agents_state = []
-        for i in range(agent_num):
-            self.agents_state.append(State())
 
         self.final_agents_state=[]#1エピソード終了後のエージェントを幽霊化させるための状態
         for i in range(agent_num):
             self.final_agents_state.append(State(99, i+1))
 
         self.now_agent = 0
-        self.init_agents_state = init_agents_state
+        self.init_agents_state = []
 
         #about agents goal
         self.is_goal=is_goal
@@ -93,8 +91,15 @@ class Maze_8direction():
     #環境の初期化を行う
     def reset(self):
         #init state for random
-        for i in range(self.agent_num):
-            self.init_agents_state[i]=State(np.random.randint(self.row_length-2)+1, np.random.randint(self.column_length-2)+1)
+        self.init_agents_state = []
+        while len(self.init_agents_state) < self.agent_num:
+            new_state = State(np.random.randint(self.row_length-2)+1, np.random.randint(self.column_length-2)+1)
+            new_flag = 1
+            for i in range(len(self.init_agents_state)):
+                if self.init_agents_state[i].equal(new_state):
+                    new_flag = 0
+            if new_flag == 1:
+                self.init_agents_state.append(new_state)
 
         #copy and return
         self.agents_state = copy.deepcopy(self.init_agents_state) #エージェントの位置を初期化 *とりまこれだけ
@@ -236,11 +241,14 @@ class Maze_8direction():
 
         return reward, done
 
-    def colision_judge(self, next_states, rewards, dones):#衝突判定 衝突している者たちの報酬と
+    def colision_judge(self, agents_state, next_states, rewards, dones):#衝突判定 衝突している者たちの報酬と
         n_s2 = copy.deepcopy(next_states)
-        for i in range(len(next_states)):
-            for j in range(len(n_s2)):
+        for i in range(self.agent_num):
+            for j in range(self.agent_num):
                 if i != j and next_states[i].equal(n_s2[j]):#衝突しているエージェントについて書き換える
+                    rewards[i] = self.colision_reward
+                    dones[i] = True
+                if i != j and agents_state[i].equal(next_states[j]) and agents_state[j].equal(next_states[i]):#状態が入れ替わっているときは衝突と判定
                     rewards[i] = self.colision_reward
                     dones[i] = True
         return  rewards, dones

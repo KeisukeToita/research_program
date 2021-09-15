@@ -71,10 +71,15 @@ class ActPlanAgent(Base_Agent):
     GOAL_MODE = 0
     ACTPLAN_MODE = 1
 
+    EPSILON_GREEDY_MODE = "EPSILON_GREEDY"
+    SOFTMAX_MODE = "SOFTMAX"
+
     #TODO 相対座標は序盤ランダム性があるので、一回計算したものをワンステップ通して使うように改変する必要あり。
-    def __init__(self, env, number_of_goals, epsilon=0.1, gamma=0.9, alpha=0.1):
+    def __init__(self, env, number_of_goals, epsilon=0.1, gamma=0.9, alpha=0.1, act_mode="SOFTMAX"):
         super().__init__(env, epsilon, gamma, alpha)
         self.set_mode(self.GOAL_MODE) #仮設定
+        
+        self.act_mode = act_mode
 
         #about goal 
         self.number_of_goals = number_of_goals
@@ -150,7 +155,7 @@ class ActPlanAgent(Base_Agent):
 
     def actplan_phase_reset(self):
         self.est_other_actplan = np.random.randint(len(self.actplans))
-        #self.actplan_update()
+        self.actplan_update()
 
         self.actplan_estimation_value = np.zeros(len(self.actplans))
         self.actplan_estimation_score = np.zeros(len(self.actplans))
@@ -158,44 +163,44 @@ class ActPlanAgent(Base_Agent):
         self.actplan_infer_steps = 0
 
     #about action func
-    def greedy_act(self, my_state, other_state=None):
-        if self.mode == self.GOAL_MODE:
-            n = my_state
-            if np.random.random() < self.epsilon:
-                # random
-                return trans_ntoa(np.random.randint(len(self.actions)))
+    def act(self, my_state, angle=None):
+        if self.act_mode == self.EPSILON_GREEDY_MODE:
+            return self.greedy_act(my_state, angle)
+        elif self.act_mode == self.SOFTMAX_MODE:
+            return self.softmax_act(my_state, angle)
+
+    def greedy_act(self, my_state, angle=None):
+        n = my_state
+        if np.random.random() < self.epsilon:
+            # random
+            action = np.random.randint(len(self.actions))
+        else:
+            # choice best action
+            if n.repr() in self.policy and sum(self.policy[n.repr()]) != 0:
+                action = np.argmax(self.policy[n.repr()])
             else:
-                # choice best action
-                if n.repr() in self.policy and sum(self.policy[n.repr()]) != 0:
-                    return trans_ntoa(np.argmax(self.policy[n.repr()]))
-                else:
-                    return trans_ntoa(np.random.randint(len(self.actions)))
-        elif self.mode == self.ACTPLAN_MODE:
-            #calcurate relative state
-            m = my_state
-            o = other_state
-            my_r_state, r_angle = self.get_relative_state(m, o)
-            if np.random.random() < self.epsilon:
-                # random
                 action = np.random.randint(len(self.actions))
-            else:
-                # choice best action
-                if my_r_state.repr() in self.policy and sum(self.policy[my_r_state.repr()]) != 0:
-                    action = np.argmax(self.policy[my_r_state.repr()])
-                else:
-                    action = np.random.randint(len(self.actions))
-            r_action = self.get_rotate_action(action, r_angle*-1)
-            return trans_ntoa(r_action)
+
+        if self.mode == self.ACTPLAN_MODE:
+            action = self.get_rotate_action(action, angle)
+        return trans_ntoa(action)
+    
+    def softmax_act(self, my_state, angle=None):
+        n = my_state
+        sum_exp_values = sum([np.exp(v) for v in self.policy[n.repr()]])
+        p = [np.exp(v)/sum_exp_values for v in self.policy[n.repr()]]
+        action = np.random.choice(np.arange(len(self.actions)), p=p)
+        if self.mode == self.ACTPLAN_MODE:
+            action = self.get_rotate_action(action, angle)
+        return trans_ntoa(action)
 
     #about get relative state funcs
     def get_my_direction(self, my_state):
         m = my_state
         if m.repr() in self.goalQ[self.my_goal][self.est_other_goal] and sum(self.goalQ[self.my_goal][self.est_other_goal][m.repr()]) != 0:
             return np.argmax(self.goalQ[self.my_goal][self.est_other_goal][m.repr()])
-
         if self.past_action != None:
-            return self.past_action #TODO @when choice action, save past action
-        
+            return self.past_action
         return np.random.randint(len(self.actions))
     def get_other_direction(self):#need observe other past action
         if self.other_past_action != None:
@@ -241,7 +246,7 @@ class ActPlanAgent(Base_Agent):
         return int(r_action)
     
     #about learn func
-    def learn(self, s, n_s, action, reward, o_s = None, o_n_s = None):
+    def learn(self, s, n_s, action, reward, angle=None):
         a = trans_aton(action)
         if a != 8:
             if self.mode == self.GOAL_MODE:
@@ -249,16 +254,15 @@ class ActPlanAgent(Base_Agent):
                 estimated = self.goalQ[self.my_goal][self.est_other_goal][s.repr()][a]
                 self.goalQ[self.my_goal][self.est_other_goal][s.repr()][a] += self.alpha * (gain - estimated)
             elif self.mode == self.ACTPLAN_MODE:
-                #calcurate state
-                r_s, r_angle = self.get_relative_state(s, o_s) #relative state
-                n_r_s, n_r_angle = self.get_relative_state(n_s, o_n_s) #next relative state
-                #calcurate action
-                r_action = self.get_rotate_action(a, r_angle)
-
-                gain = reward + self.gamma * max(self.actplanQ[self.my_actplan][self.est_other_actplan][n_r_s.repr()])
-                estimated = self.actplanQ[self.my_actplan][self.est_other_actplan][r_s.repr()][r_action]
-                self.actplanQ[self.my_actplan][self.est_other_actplan][r_s.repr()][r_action] += self.alpha * (gain - estimated)
-
+                if reward > 0:
+                    self.get_rotate_action(a, angle*-1)
+                    gain = reward + self.gamma * max(self.goalQ[self.my_goal][self.est_other_goal][n_s.repr()])
+                    estimated = self.goalQ[self.my_goal][self.est_other_goal][s.repr()][a]
+                    self.goalQ[self.my_goal][self.est_other_goal][s.repr()][a] += self.alpha * (gain - estimated)
+                elif reward <= 0:
+                    gain = reward + self.gamma * max(self.actplanQ[self.my_actplan][self.est_other_actplan][n_s.repr()])
+                    estimated = self.actplanQ[self.my_actplan][self.est_other_actplan][s.repr()][action]
+                    self.actplanQ[self.my_actplan][self.est_other_actplan][s.repr()][action] += self.alpha * (gain - estimated)
         self.policy_update()
 
     #about estimate func
@@ -287,9 +291,6 @@ class ActPlanAgent(Base_Agent):
     def estimate_other_actplan(self, other_state, other_action, my_state):
         other_action = trans_aton(other_action)
         if other_action != 8:
-            other_Dir = self.get_other_direction()
-            o_r_s, r_angle = self.get_relative_state(my_state=other_state, other_state=my_state, o_Dir=other_Dir) #other_relative_state
-            r_other_action = self.get_rotate_action(other_action, r_angle)
             #TODO infer part fix
             self.actplan_infer_steps += 1
             policy_each_actplan = []
@@ -298,7 +299,7 @@ class ActPlanAgent(Base_Agent):
                     policy_each_actplan.append(self.goalQ[other_actplan][self.my_goal][o_r_s.repr()][other_action]/ sum(self.goalQ[other_actplan][self.my_goal][o_r_s.repr()]))
                 else:
                     policy_each_actplan.append(1/len(self.actplans))
-            self.actplan_estimation_value += policy_each_goal
+            self.actplan_estimation_value += policy_each_actplan
             self.actplan_estimation_score = self.actplan_estimation_value / self.actplan_infer_steps
 
             #update est_other_goal
@@ -329,13 +330,19 @@ class ActPlanAgent(Base_Agent):
             self.policy = self.actplanQ[self.my_actplan][self.est_other_actplan]
     def actplan_update(self):
         #TODO Fix actplan update
-        pass
+        self.my_actplan = np.random.randint(self.number_of_actplans)
+
     #get func
     def get_mode(self):
         return self.mode
     def get_my_goal(self):
         return self.my_goal
-    
+    def get_my_actplan(self):
+        return self.my_actplan
+    def get_est_other_goal(self):
+        return self.est_other_goal
+    def get_est_other_actplan(self):
+        return self.est_other_actplan
     #set func
     def set_past_action(self, action):
         self.past_action = action

@@ -143,7 +143,7 @@ class Actplan_Logger:
                             'action': a[i],
                             'reward': reward[i],
                             'total_reward': total_reward}
-            elif label == "GOAL":
+            elif label == "with GOAL":
                 data_dict = {'Step': step_n,
                             'state': agent_state[i].repr(),
                             'action': a[i],
@@ -151,19 +151,33 @@ class Actplan_Logger:
                             'total_reward': total_reward,
                             'my_goal': my_goals[i],
                             'est_other_goal': est_other_goals[i]}
-            elif label == "ACTPLAN":
-                data_dict = {'Step':step_n,
-                            'state':agent_state[i].repr(),
-                            "other_state":other_states[i].repr(),
-                            'relative_state':relative_states[i].repr(),
-                            'mode':mode,
-                            'action':a[i],
-                            'reward':reward[i],
-                            'total_reward':total_reward,
-                            'my_goal':my_goals[i],
-                            'est_other_goal':est_other_goals[i],
-                            'my_actplan':my_actplans[i],
-                            'est_other_actplan':est_other_actplans[i]}
+            elif label == "with ACTPLAN":
+                if mode == "ACTPLAN":
+                    data_dict = {'Step':step_n,
+                                'state':agent_state[i].repr(),
+                                "other_state":other_states[i].repr(),
+                                'relative_state':relative_states[i].repr(),
+                                'mode':mode,
+                                'action':a[i],
+                                'reward':reward[i],
+                                'total_reward':total_reward,
+                                'my_goal':my_goals[i],
+                                'est_other_goal':est_other_goals[i],
+                                'my_actplan':my_actplans[i],
+                                'est_other_actplan':est_other_actplans[i]}
+                elif mode == "GOAL":
+                    data_dict = {'Step':step_n,
+                                'state':agent_state[i].repr(),
+                                "other_state":"not_needed",
+                                'relative_state':"not_needed",
+                                'mode':mode,
+                                'action':a[i],
+                                'reward':reward[i],
+                                'total_reward':total_reward,
+                                'my_goal':my_goals[i],
+                                'est_other_goal':est_other_goals[i],
+                                'my_actplan':"not_needed",
+                                'est_other_actplan':"not_needed"}
 
             self.experience_logs[i].append(data_dict)
 
@@ -171,51 +185,71 @@ class Actplan_Logger:
     def state_transition_write_csv(self, episode_n):
         is_goal_len = len(self.state_transition_with_goal_header_label)
         not_goal_len = len(self.state_transition_header_label)
+        with_actplan_len = len(self.state_transition_with_actplan_relative_state_header_label)
 
         if len(self.experience_logs[0][0]) == not_goal_len:
             for i in range(self.agent_n):
-                filename = self.Agents_transition_dir[i]+"episode"+str(episode_n)+".csv"
+                filename = self.Agents_transition_dir[i]+"agent"+str(i+1)+"episode"+str(episode_n)+"state_transition.csv"
                 with open(filename, 'w', encoding='shift-jis', newline='') as f:
                     writer = csv.DictWriter(f, fieldnames=self.state_transition_header_label)
                     writer.writeheader()
                     writer.writerows(self.experience_logs[i])
-
         elif len(self.experience_logs[0][0]) == is_goal_len:
             for i in range(self.agent_n):
-                filename = self.Agents_transition_dir[i]+"episode"+str(episode_n)+".csv"
+                filename = self.Agents_transition_dir[i]+"agent"+str(i+1)+"episode"+str(episode_n)+"state_transition.csv"
                 with open(filename, 'w', encoding='shift-jis', newline='') as f:
                     writer = csv.DictWriter(f, fieldnames=self.state_transition_with_goal_header_label)
+                    writer.writeheader()
+                    writer.writerows(self.experience_logs[i])
+        elif len(self.experience_logs[0][0]) == with_actplan_len:
+            for i in range(self.agent_n):
+                filename = self.Agents_transition_dir[i]+"agent"+str(i+1)+"episode"+str(episode_n)+"state_transition.csv"
+                with open(filename, 'w', encoding='shift-jis', newline='') as f:
+                    writer = csv.DictWriter(f, fieldnames=self.state_transition_with_actplan_relative_state_header_label)
                     writer.writeheader()
                     writer.writerows(self.experience_logs[i])
 
     #Q table save function
     def q_table_write_csv(self, episode_n, Q, agent_n, row, column, mode, my_goal=None, other_goal=None):
         Q_dict=[]
-        for i in range(row):
-            for j in range(column):
-                Q_dict.append({'State':State(i,j).repr(),
-                                '↑':Q[State(i,j).repr()][0],
-                                '↑→':Q[State(i,j).repr()][1],
-                                '→':Q[State(i,j).repr()][2],
-                                '↓→':Q[State(i,j).repr()][3],
-                                '↓':Q[State(i,j).repr()][4],
-                                '←↓':Q[State(i,j).repr()][5],
-                                '←':Q[State(i,j).repr()][6],
-                                '←↑':Q[State(i,j).repr()][7]})
+        if mode == "ACTPLAN":
+            for i in range(-2, 3):
+                for j in range(-2, 3):
+                    Q_dict.append({'State':State(i,j).repr(),
+                                    '↑':Q[State(i,j).repr()][0],
+                                    '↑→':Q[State(i,j).repr()][1],
+                                    '→':Q[State(i,j).repr()][2],
+                                    '↓→':Q[State(i,j).repr()][3],
+                                    '↓':Q[State(i,j).repr()][4],
+                                    '←↓':Q[State(i,j).repr()][5],
+                                    '←':Q[State(i,j).repr()][6],
+                                    '←↑':Q[State(i,j).repr()][7]})
+        else:
+            for i in range(row):
+                for j in range(column):
+                    Q_dict.append({'State':State(i,j).repr(),
+                                    '↑':Q[State(i,j).repr()][0],
+                                    '↑→':Q[State(i,j).repr()][1],
+                                    '→':Q[State(i,j).repr()][2],
+                                    '↓→':Q[State(i,j).repr()][3],
+                                    '↓':Q[State(i,j).repr()][4],
+                                    '←↓':Q[State(i,j).repr()][5],
+                                    '←':Q[State(i,j).repr()][6],
+                                    '←↑':Q[State(i,j).repr()][7]})
 
         if mode == "NONE":
             filename = self.Agents_policy_dir[agent_n]+"episode"+str(episode_n)+".csv"
         elif mode == "GOAL":#goal
-            filename = self.Agents_policy_dir[agent_n]+"episode"+str(episode_n)+"/goal/Q-table"+str(my_goal)+str(other_goal)+".csv"
+            filename = self.Agents_policy_dir[agent_n]+"episode"+str(episode_n)+"/goal/agent"+str(agent_n+1)+"episode"+str(episode_n)+"goalQ-table"+str(my_goal)+str(other_goal)+".csv"
         elif mode == "ACTPLAN":
-            filename = self.Agents_policy_dir[agent_n]+"episode"+str(episode_n)+"/actplan/Q-table"+str(my_goal)+str(other_goal)+".csv"
+            filename = self.Agents_policy_dir[agent_n]+"episode"+str(episode_n)+"/actplan/agent"+str(agent_n+1)+"episode"+str(episode_n)+"actplanQ-table"+str(my_goal)+str(other_goal)+".csv"
 
         with open(filename, 'w', encoding='shift-jis', newline='') as f:
                 writer = csv.DictWriter(f, fieldnames=self.Q_table_header_label)
                 writer.writeheader()
                 writer.writerows(Q_dict)
 
-    def all_goal_q_table_write_csv(self, episode_n, Q, agent_n, row, column, mode):
+    def all_q_table_write_csv(self, episode_n, Q, agent_n, row, column, mode):
         if mode == "GOAL":
             goal_num = 4
             os.makedirs(self.Agents_policy_dir[agent_n]+"episode"+str(episode_n)+"/goal/")

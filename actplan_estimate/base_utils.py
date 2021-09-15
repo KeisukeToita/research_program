@@ -26,6 +26,7 @@ def trans_ntoa(action_n):
         return Action.UL
     if action_n == 8:
         return Action.S
+    return action_n
 
 def trans_aton(action):
     if action == Action.U:
@@ -46,6 +47,7 @@ def trans_aton(action):
         return 7
     if action == Action.S:
         return 8
+    return action
 
 #function about data loading
 def load_json(filename):
