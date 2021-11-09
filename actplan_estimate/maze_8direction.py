@@ -46,7 +46,7 @@ class Action(Enum):#TODO 各所８方向 & STAY番号を８に変更
 1~8:報酬用 reward_func関数にて設定
 テキストファイル形式
 """
-class Maze_8direction():
+class Maze_8direction:
 
     def __init__(self, grid, init_agents_state=None, agent_num=1, is_goal=False):
 
@@ -60,7 +60,7 @@ class Maze_8direction():
             self.final_agents_state.append(State(99, i+1))
 
         self.now_agent = 0
-        self.init_agents_state = []
+        self.init_agents_state = init_agents_state
 
         #about agents goal
         self.is_goal=is_goal
@@ -89,17 +89,18 @@ class Maze_8direction():
                 Action.S]
 
     #環境の初期化を行う
-    def reset(self):
+    def reset(self, fix_seed_value=None):
+        np.random.seed(fix_seed_value)
         #init state for random
-        self.init_agents_state = []
-        while len(self.init_agents_state) < self.agent_num:
-            new_state = State(np.random.randint(self.row_length-2)+1, np.random.randint(self.column_length-2)+1)
-            new_flag = 1
-            for i in range(len(self.init_agents_state)):
-                if self.init_agents_state[i].equal(new_state):
-                    new_flag = 0
-            if new_flag == 1:
-                self.init_agents_state.append(new_state)
+        # self.init_agents_state = []
+        # while len(self.init_agents_state) < self.agent_num:
+        #     new_state = State(np.random.randint(self.row_length-2)+1, np.random.randint(self.column_length-2)+1)
+        #     new_flag = 1
+        #     for i in range(len(self.init_agents_state)):
+        #         if self.init_agents_state[i].equal(new_state):
+        #             new_flag = 0
+        #     if new_flag == 1:
+        #         self.init_agents_state.append(new_state)
 
         #copy and return
         self.agents_state = copy.deepcopy(self.init_agents_state) #エージェントの位置を初期化 *とりまこれだけ

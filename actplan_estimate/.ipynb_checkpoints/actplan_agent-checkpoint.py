@@ -7,42 +7,6 @@ import copy
 from base_utils import *
 from collections import defaultdict
 from maze_8direction import *
-
-class State():
-    def __init__(self, row=-1, column=-1):
-        self.column = column
-        self.row = row
-
-    # 状態の表現
-    def repr(self):
-        return "<State:[{}, {}]>".format(self.row, self.column)
-    # クローン生成
-
-    def clone(self):
-        return State(self.row, self.column)
-    # ハッシュ型のクローン?
-
-    def __hash__(self):
-        return hash((self.row, self.column))
-
-    # 同値判定
-    def equal(self, other):
-        return self.row == other.row and self.column == other.column
-
-# 行動の定義
-
-class Action(Enum):#TODO 各所８方向 & STAY番号を８に変更
-    U = 0 #UP
-    UR = 1 #UP&RIGHT
-    R = 2 #RIGHT
-    DR = 3 #DOWN&RIGHT
-    D = 4 #DOWN
-    DL = 5 #DOWN&LEFT
-    L = 6 #LEFT
-    UL = 7 #UP&LEFT
-    S = 8 #STAY
-
-
 class ActPlan:
     straight = 0
     go_right = 1
@@ -160,21 +124,21 @@ class ActPlanAgent(Base_Agent):
     
     #about reset func
     def seed_reset(self):
-        # #reset goalQ
-        # self.goalQ = []
-        # for i in range(self.number_of_goals):
-        #     self.goalQ.append([])
-        # for i in range(self.number_of_goals):
-        #     for j in range(self.number_of_goals):
-        #         self.goalQ[i].append(defaultdict(lambda: [0] * len(self.actions)))
-        # #reset actplanQ
-        # actplan_n = len(self.actplans)
-        # self.actplanQ = []
-        # for i in range(actplan_n):
-        #     self.actplanQ.append([])
-        # for i in range(actplan_n):
-        #     for j in range(actplan_n):
-        #         self.actplanQ[i].append(defaultdict(lambda: [0] * len(self.actions)))
+        #reset goalQ
+        self.goalQ = []
+        for i in range(self.number_of_goals):
+            self.goalQ.append([])
+        for i in range(self.number_of_goals):
+            for j in range(self.number_of_goals):
+                self.goalQ[i].append(defaultdict(lambda: [0] * len(self.actions)))
+        #reset actplanQ
+        actplan_n = len(self.actplans)
+        self.actplanQ = []
+        for i in range(actplan_n):
+            self.actplanQ.append([])
+        for i in range(actplan_n):
+            for j in range(actplan_n):
+                self.actplanQ[i].append(defaultdict(lambda: [0] * len(self.actions)))
 
         self.policy_update()
 
@@ -352,15 +316,14 @@ class ActPlanAgent(Base_Agent):
 
     #about update_func
     def mode_update(self, my_state, other_state):
-        # m_row = my_state.row
-        # m_col = my_state.column
-        # #mode judge
-        # mode = self.GOAL_MODE
-        # for x in range(-2, 3):
-        #     for y in range(-2, 3):
-        #         if other_state.repr() == State(m_row+y, m_col+x).repr():
-        #             mode = self.ACTPLAN_MODE
+        m_row = my_state.row
+        m_col = my_state.column
+        #mode judge
         mode = self.GOAL_MODE
+        for x in range(-2, 3):
+            for y in range(-2, 3):
+                if other_state.repr() == State(m_row+y, m_col+x).repr():
+                    mode = self.ACTPLAN_MODE
         #mode set
         self.mode = mode
     def policy_update(self):
@@ -421,12 +384,9 @@ class ActPlanAgent_with_direction(ActPlanAgent):
 
         self.actplan_infer_steps = 0
 
-    def episode_reset(self, goal=None):
+    def episode_reset(self):
         self.est_other_goal = np.random.randint(self.number_of_goals)
-        if goal == None:
-            self.my_goal = np.random.randint(self.number_of_goals)
-        else:
-            self.my_goal = goal
+        self.my_goal = np.random.randint(self.number_of_goals)
 
         self.goal_estimation_value = np.zeros(self.number_of_goals)
         self.goal_estimation_score = np.zeros(self.number_of_goals)
@@ -444,7 +404,6 @@ class ActPlanAgent_with_direction(ActPlanAgent):
         self.actplan_one_change = False
 
         self.actplan_infer_steps = 0
-
     #about actplan func
     def make_actplan_policy(self, policy, actplan):
         #TODO 行動方針に応じたpolicyを出力するための関数

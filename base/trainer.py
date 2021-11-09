@@ -317,14 +317,18 @@ class SOMQLearningTrainer_Gchange(SOMQLearningTrainer):
     def one_seed_train(self):
         #train loop
         self.logger.seed_count()
-
+        colision_count = 0
         for i in range(self.episode):
             if (i+1) % self.report_interval == 0:
                 reward, step = self.one_episode(i+1)
                 print("Episode {}: Agent gets {} reward. {} step".format(i+1, reward, step))
             else:
-                self.one_episode(i+1)
+                reward, step = self.one_episode(i+1)
+            
+            if reward < 0:
+                colision_count += 1
 
+        print("colision count: {}".format(colision_count))
         #estimate transition save
         self.logger.show_estimate_rate()
         self.logger.show_estimate_rate_400_ave()
