@@ -1,6 +1,6 @@
 #適当に作った関数を入れとくファイル
 
-from maze import *
+from maze_8direction import *
 import json
 from datetime import datetime as dt
 import os
@@ -9,27 +9,45 @@ import sys
 #function about agent
 def trans_ntoa(action_n):
     if action_n == 0:
-        return Action.UP
+        return Action.U
     if action_n == 1:
-        return Action.DOWN
+        return Action.UR
     if action_n == 2:
-        return Action.LEFT
+        return Action.R
     if action_n == 3:
-        return Action.RIGHT
+        return Action.DR
     if action_n == 4:
-        return Action.STAY
+        return Action.D
+    if action_n == 5:
+        return Action.DL
+    if action_n == 6:
+        return Action.L
+    if action_n == 7:
+        return Action.UL
+    if action_n == 8:
+        return Action.S
+    return action_n
 
 def trans_aton(action):
-    if action == Action.UP:
+    if action == Action.U:
         return 0
-    if action == Action.DOWN:
+    if action == Action.UR:
         return 1
-    if action == Action.LEFT:
+    if action == Action.R:
         return 2
-    if action == Action.RIGHT:
+    if action == Action.DR:
         return 3
-    if action == Action.STAY:
+    if action == Action.D:
         return 4
+    if action == Action.DL:
+        return 5
+    if action == Action.L:
+        return 6
+    if action == Action.UL:
+        return 7
+    if action == Action.S:
+        return 8
+    return action
 
 #function about data loading
 def load_json(filename):

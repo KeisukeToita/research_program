@@ -3,12 +3,8 @@
 #ライブラリimport
 import numpy as np
 import copy
-from agent import *
+from actplan_agent import *
 
-
-#environment関連のクラス
-
-# 状態を表すクラス
 class State():
     def __init__(self, row=-1, column=-1):
         self.column = column
@@ -32,12 +28,16 @@ class State():
 
 # 行動の定義
 
-class Action(Enum):
-    UP = 0
-    DOWN = 1
-    LEFT = 2
-    RIGHT = 3
-    STAY = 4
+class Action(Enum):#TODO 各所８方向 & STAY番号を８に変更
+    U = 0 #UP
+    UR = 1 #UP&RIGHT
+    R = 2 #RIGHT
+    DR = 3 #DOWN&RIGHT
+    D = 4 #DOWN
+    DL = 5 #DOWN&LEFT
+    L = 6 #LEFT
+    UL = 7 #UP&LEFT
+    S = 8 #STAY
 
 """
 迷路の情報
@@ -46,7 +46,7 @@ class Action(Enum):
 1~8:報酬用 reward_func関数にて設定
 テキストファイル形式
 """
-class Maze():
+class Maze_8direction:
 
     def __init__(self, grid, init_agents_state=None, agent_num=1, is_goal=False):
 
@@ -54,8 +54,6 @@ class Maze():
         self.grid = grid
         self.agent_num = agent_num
         self.agents_state = []
-        for i in range(agent_num):
-            self.agents_state.append(State())
 
         self.final_agents_state=[]#1エピソード終了後のエージェントを幽霊化させるための状態
         for i in range(agent_num):
@@ -80,13 +78,29 @@ class Maze():
         return len(self.grid[0])
     @property
     def actions(self):
-        return [Action.UP, Action.DOWN, Action.LEFT, Action.RIGHT, Action.STAY]
+        return [Action.U,
+                Action.UR,
+                Action.R,
+                Action.DR,
+                Action.D,
+                Action.DL,
+                Action.L,
+                Action.UL,
+                Action.S]
 
     #環境の初期化を行う
-    def reset(self):
+    def reset(self, fix_seed_value=None):
+        np.random.seed(fix_seed_value)
         #init state for random
-        for i in range(self.agent_num):
-            self.init_agents_state[i]=State(np.random.randint(self.row_length-2)+1, np.random.randint(self.column_length-2)+1)
+        # self.init_agents_state = []
+        # while len(self.init_agents_state) < self.agent_num:
+        #     new_state = State(np.random.randint(self.row_length-2)+1, np.random.randint(self.column_length-2)+1)
+        #     new_flag = 1
+        #     for i in range(len(self.init_agents_state)):
+        #         if self.init_agents_state[i].equal(new_state):
+        #             new_flag = 0
+        #     if new_flag == 1:
+        #         self.init_agents_state.append(new_state)
 
         #copy and return
         self.agents_state = copy.deepcopy(self.init_agents_state) #エージェントの位置を初期化 *とりまこれだけ
@@ -165,13 +179,26 @@ class Maze():
         next_state = state.clone()
 
         #移動
-        if action == Action.UP:
+        if action == Action.U:
             next_state.row -= 1
-        if action == Action.DOWN:
+        if action == Action.D:
             next_state.row += 1
-        if action == Action.LEFT:
+        if action == Action.L:
             next_state.column -= 1
-        if action == Action.RIGHT:
+        if action == Action.R:
+            next_state.column += 1
+
+        if action == Action.UL:
+            next_state.row -= 1
+            next_state.column -= 1
+        if action == Action.UR:
+            next_state.row -= 1
+            next_state.column += 1
+        if action == Action.DL:
+            next_state.row += 1
+            next_state.column -= 1
+        if action == Action.DR:
+            next_state.row += 1
             next_state.column += 1
         
         #移動可能かのチェック 無理なら元に戻す
@@ -215,11 +242,14 @@ class Maze():
 
         return reward, done
 
-    def colision_judge(self, next_states, rewards, dones):#衝突判定 衝突している者たちの報酬と
+    def colision_judge(self, agents_state, next_states, rewards, dones):#衝突判定 衝突している者たちの報酬と
         n_s2 = copy.deepcopy(next_states)
-        for i in range(len(next_states)):
-            for j in range(len(n_s2)):
+        for i in range(self.agent_num):
+            for j in range(self.agent_num):
                 if i != j and next_states[i].equal(n_s2[j]):#衝突しているエージェントについて書き換える
+                    rewards[i] = self.colision_reward
+                    dones[i] = True
+                if i != j and agents_state[i].equal(next_states[j]) and agents_state[j].equal(next_states[i]):#状態が入れ替わっているときは衝突と判定
                     rewards[i] = self.colision_reward
                     dones[i] = True
         return  rewards, dones
@@ -227,7 +257,7 @@ class Maze():
     def _set_now_agent(self, number):
         self.now_agent = number
 
-    def get_finish_state(self, number):
+    def get_finish_states(self, number):
         return self.final_agents_state[number]
 
     def get_goal_states(self):#4 goals at 4 corners only

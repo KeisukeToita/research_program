@@ -1,4 +1,0 @@
-{"exp_title": "AgentTrain",
-"seed": 10,
-"episode": 1000,
-"repo&write_interval": 10}
